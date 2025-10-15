@@ -1,0 +1,8 @@
+# Ambiente Virtual do Python
+venv/
+
+# Arquivos de cache do Python
+__pycache__/
+
+# Arquivos que os usuários enviam para a aplicação
+uploads/
