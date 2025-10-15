@@ -18,6 +18,7 @@ from flask import (
 from pypdf import PdfWriter, PdfReader
 from werkzeug.utils import secure_filename
 import fitz  
+import tempfile
 
 # --- Configuração da Aplicação Flask ---
 app = Flask(__name__)
