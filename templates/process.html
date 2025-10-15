@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Processando arquivos PDF...</title>
+        <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f7f9;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px 0;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 90%;
+            max-width: 600px;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+
+        #log-container {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-top: 20px;
+            padding: 20px;
+            text-align: left;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            background-color: #fafafa;
+        }
+
+        .log-item {
+            padding: 4px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .log-item.processando {
+            color: #7f8c8d;
+        }
+
+        .log-item.sucesso {
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        .log-item.falha {
+            color: #c0392b;
+            font-weight: bold;
+        }
+
+        #progress-bar-container {
+            width: 100%;
+            background-color: #ecf0f1;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        #progress-bar {
+            width: 0%;
+            height: 20px;
+            background-color: #3498db;
+            border-radius: 8px;
+            text-align: center;
+            color: white;
+            line-height: 20px;
+            transition: width 0.5s ease;
+        }
+
+        #download-button {
+            background-color: #2ecc71;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+            text-decoration: none;
+            display: none;
+        }
+    </style>
+    </head>
+
+    <body>
+        <div class="container">
+            <h1>Aguarde...</h1>
+            <div id="progress-bar-container">
+                <div id="progress-bar">0%</div>
+            </div>
+            <div id="log-container"></div>
+            <a href="#" id="download-button">Download do Ficheiro Unificado</a>
+        </div>
+
+        <script>
+        const logContainer = document.getElementById('log-container');
+        const progressBar = document.getElementById('progress-bar');
+        const downloadButton = document.getElementById('download-button');
+
+        const eventSource = new EventSource("/stream/{{ session_id }}/{{ nome_final }}");
+
+        eventSource.onmessage = function (event) {
+            const data = JSON.parse(event.data);
+            const logItem = document.createElement('div');
+            logItem.classList.add('log-item');
+
+            let percent = 0;
+            if (data.total > 0) {
+                percent = Math.round((data.atual / data.total) * 100);
+            }
+
+            switch (data.tipo) {
+                case 'inicio':
+                    logItem.textContent = `A iniciar... Total de ${data.total} ficheiros.`;
+                    break;
+                case 'processando':
+                    logItem.textContent = `[${data.atual}/${data.total}] A processar: ${data.nome_ficheiro}`;
+                    logItem.classList.add('processando');
+                    progressBar.style.width = percent + '%';
+                    progressBar.textContent = percent + '%';
+                    break;
+                case 'sucesso':
+                    logItem.textContent = `✓ Sucesso: ${data.nome_ficheiro}`;
+                    logItem.classList.add('sucesso');
+                    break;
+                case 'falha':
+                    logItem.textContent = `✗ Falha: ${data.nome_ficheiro}`;
+                    logItem.classList.add('falha');
+                    break;
+                case 'finalizado':
+                    logItem.textContent = "Processo finalizado com sucesso!";
+                    logItem.classList.add('sucesso');
+                    progressBar.style.width = '100%';
+                    progressBar.textContent = '100%';
+                    downloadButton.href = data.nome_ficheiro; // URL de download
+                    downloadButton.style.display = 'inline-block';
+                    eventSource.close();
+                    break;
+                case 'erro_final':
+                    logItem.textContent = `Erro: ${data.nome_ficheiro}`;
+                    logItem.classList.add('falha');
+                    eventSource.close();
+                    break;
+            }
+
+            logContainer.appendChild(logItem);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        };
+
+        eventSource.onerror = function (err) {
+            console.error("EventSource failed:", err);
+            const logItem = document.createElement('div');
+            logItem.textContent = "Erro de conexão com o servidor.";
+            logItem.classList.add('falha');
+            logContainer.appendChild(logItem);
+            eventSource.close();
+        };
+    </script>
+    </body>
+
+</html>
